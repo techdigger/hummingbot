@@ -89,8 +89,10 @@ class TheHubAPIOrderBookDataSource(OrderBookTrackerDataSource):
         timeout = aiohttp.ClientTimeout(
             total=None, sock_read=self.HEARTBEAT_TIME_INTERVAL * 2
         )
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url, headers={"Accept": "text/event-stream"}) as resp:
+        async with (
+            aiohttp.ClientSession(timeout=timeout) as session,
+            session.get(url, headers={"Accept": "text/event-stream"}) as resp,
+        ):
                 resp.raise_for_status()
                 # Per SSE spec: accumulate data lines; dispatch on blank line.
                 event_name: Optional[str] = None
@@ -158,7 +160,7 @@ class TheHubAPIOrderBookDataSource(OrderBookTrackerDataSource):
         )
         message_queue.put_nowait(msg)
 
-    def _channel_originating_message(self, event_message: Dict[str, Any]) -> str:
+    def _channel_originating_message(self, _event_message: Dict[str, Any]) -> str:
         # Not used — SSE routing is handled by _route_sse_event directly
         return ""
 
