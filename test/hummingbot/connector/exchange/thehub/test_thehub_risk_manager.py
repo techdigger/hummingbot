@@ -72,3 +72,28 @@ class TheHubRiskManagerTests(TestCase):
     def test_redundant_ok_is_noop(self):
         self.rm.on_event(RiskEvent.API_OK)
         self.assertEqual(RiskState.RUNNING, self.rm.state)
+
+    def test_status_is_defensive_copy(self):
+        self.rm.on_event(RiskEvent.API_ERROR)
+        snapshot = self.rm.status
+        snapshot.state = RiskState.RUNNING
+        snapshot.active_faults.clear()
+        self.assertEqual(RiskState.PAUSED, self.rm.state)
+        self.assertIn(RiskEvent.API_ERROR, self.rm.status.active_faults)
+
+    def test_halt_records_fault_in_active_faults(self):
+        self.rm.on_event(RiskEvent.SETTLEMENT_ROLLED_BACK)
+        self.assertIn(RiskEvent.SETTLEMENT_ROLLED_BACK, self.rm.status.active_faults)
+
+    def test_manual_reset_from_running_is_noop(self):
+        self.rm.on_event(RiskEvent.MANUAL_RESET)
+        self.assertEqual(RiskState.RUNNING, self.rm.state)
+        self.assertEqual(set(), self.rm.status.active_faults)
+
+    def test_reentry_after_manual_reset(self):
+        self.rm.on_event(RiskEvent.SETTLEMENT_ROLLED_BACK)
+        self.rm.on_event(RiskEvent.MANUAL_RESET)
+        self.rm.on_event(RiskEvent.API_ERROR)
+        self.assertEqual(RiskState.PAUSED, self.rm.state)
+        self.rm.on_event(RiskEvent.API_OK)
+        self.assertEqual(RiskState.RUNNING, self.rm.state)

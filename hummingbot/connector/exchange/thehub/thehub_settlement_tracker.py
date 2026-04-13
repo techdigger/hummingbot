@@ -15,8 +15,12 @@ manager can halt the bot.
 NOTE: the event shape is inferred from the plan. When Phase 1 API ships, verify
 field names against TheHub's `/api/orderbook/private-state` response for
 `ownerSettlements`.
+
+Thread-safety: single-owner. Call `update` from one asyncio task; use a lock if
+multiple tasks can write.
 """
 
+import copy
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
@@ -65,7 +69,7 @@ class Settlement:
     base_amount: Decimal
     quote_amount: Decimal
     tx_hash: Optional[str] = None
-    last_updated_ms: int = 0
+    last_updated_ms: Optional[int] = None
     history: list[SettlementState] = field(default_factory=list)
 
     @property
@@ -88,11 +92,11 @@ class TheHubSettlementTracker:
         self._settlements: dict[str, Settlement] = {}
 
     def update(self, event: dict[str, Any]) -> Settlement:
-        """Apply a settlement event. Returns the updated Settlement."""
+        """Apply a settlement event. Returns a copy of the updated Settlement."""
         match_id = event["matchId"]
-        status_str = event["status"]
+        status_str = str(event["status"]).lower()
         if status_str not in _STATUS_MAP:
-            raise ValueError(f"Unknown settlement status: {status_str}")
+            raise ValueError(f"Unknown settlement status: {event['status']}")
         new_state = _STATUS_MAP[status_str]
 
         existing = self._settlements.get(match_id)
@@ -103,42 +107,46 @@ class TheHubSettlementTracker:
                 f"Invalid transition for match {match_id}: {prev_state} → {new_state}"
             )
 
+        updated_at = event.get("updatedAt")
+        last_updated_ms = int(updated_at) if updated_at is not None else None
+
         if existing is None:
             settlement = Settlement(
                 match_id=match_id,
-                order_hash=event["orderHash"],
+                order_hash=event.get("orderHash", ""),
                 state=new_state,
                 base_amount=Decimal(str(event.get("baseAmount", "0"))),
                 quote_amount=Decimal(str(event.get("quoteAmount", "0"))),
                 tx_hash=event.get("txHash"),
-                last_updated_ms=int(event.get("updatedAt", 0)),
+                last_updated_ms=last_updated_ms,
                 history=[new_state],
             )
             self._settlements[match_id] = settlement
-            return settlement
+            return copy.deepcopy(settlement)
 
         existing.state = new_state
         existing.history.append(new_state)
         if event.get("txHash"):
             existing.tx_hash = event["txHash"]
-        if event.get("updatedAt"):
-            existing.last_updated_ms = int(event["updatedAt"])
-        return existing
+        if last_updated_ms is not None:
+            existing.last_updated_ms = last_updated_ms
+        return copy.deepcopy(existing)
 
     def get(self, match_id: str) -> Optional[Settlement]:
-        return self._settlements.get(match_id)
+        s = self._settlements.get(match_id)
+        return copy.deepcopy(s) if s is not None else None
 
     def all(self) -> list[Settlement]:
-        return list(self._settlements.values())
+        return [copy.deepcopy(s) for s in self._settlements.values()]
 
     def invalidated(self) -> list[Settlement]:
-        """Return all settlements that were rolled back — these invalidate
+        """Return copies of all rolled-back settlements — these invalidate
         previously observed fills and must be reconciled."""
-        return [s for s in self._settlements.values() if s.is_invalidated]
+        return [copy.deepcopy(s) for s in self._settlements.values() if s.is_invalidated]
 
     def pending(self) -> list[Settlement]:
-        """Return non-terminal settlements still awaiting finality."""
-        return [s for s in self._settlements.values() if not s.is_terminal]
+        """Return copies of non-terminal settlements still awaiting finality."""
+        return [copy.deepcopy(s) for s in self._settlements.values() if not s.is_terminal]
 
     def by_order_hash(self, order_hash: str) -> list[Settlement]:
-        return [s for s in self._settlements.values() if s.order_hash == order_hash]
+        return [copy.deepcopy(s) for s in self._settlements.values() if s.order_hash == order_hash]

@@ -114,3 +114,42 @@ class TheHubSettlementTrackerTests(TestCase):
     def test_direct_settled_from_none_allowed(self):
         s = self.tracker.update(_event(status="settled"))
         self.assertEqual(SettlementState.SETTLED, s.state)
+
+    def test_mixed_case_status_accepted(self):
+        s = self.tracker.update(_event(status="MATCHED"))
+        self.assertEqual(SettlementState.MATCHED, s.state)
+        s2 = self.tracker.update(_event(status="Settled"))
+        self.assertEqual(SettlementState.SETTLED, s2.state)
+
+    def test_accessors_return_copies_not_live_refs(self):
+        self.tracker.update(_event(status="matched"))
+        snapshot = self.tracker.get("m1")
+        snapshot.history.append(SettlementState.SETTLED)
+        snapshot.state = SettlementState.SETTLED
+        # Internal state must be untouched by mutation of the returned copy.
+        live = self.tracker.get("m1")
+        self.assertEqual(SettlementState.MATCHED, live.state)
+        self.assertEqual([SettlementState.MATCHED], live.history)
+
+    def test_update_return_is_copy(self):
+        returned = self.tracker.update(_event(status="matched"))
+        returned.state = SettlementState.ROLLED_BACK
+        live = self.tracker.get("m1")
+        self.assertEqual(SettlementState.MATCHED, live.state)
+
+    def test_updated_at_zero_is_preserved(self):
+        s = self.tracker.update(_event(status="matched", updated_at=0))
+        self.assertEqual(0, s.last_updated_ms)
+
+    def test_missing_updated_at_leaves_none(self):
+        ev = _event(status="matched")
+        del ev["updatedAt"]
+        s = self.tracker.update(ev)
+        self.assertIsNone(s.last_updated_ms)
+
+    def test_direct_settled_without_order_hash(self):
+        ev = _event(status="settled")
+        del ev["orderHash"]
+        s = self.tracker.update(ev)
+        self.assertEqual(SettlementState.SETTLED, s.state)
+        self.assertEqual("", s.order_hash)

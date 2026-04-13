@@ -17,8 +17,13 @@ Rationale: TheHub's 2-phase settlement means a backend "match" can be reverted
 by an on-chain rollback. If Hummingbot already treated the match as a fill, the
 strategy's view of inventory is wrong — only a human can reconcile. Likewise, a
 balance mismatch against on-chain reality is never safe to auto-resume.
+
+Thread-safety: this class is single-owner. Dispatch `on_event` from one asyncio
+task (typically the connector's user-stream task). If multiple tasks can emit
+events, wrap calls in an `asyncio.Lock`.
 """
 
+import copy
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
@@ -77,7 +82,8 @@ class TheHubRiskManager:
 
     @property
     def status(self) -> RiskStatus:
-        return self._status
+        # Return a defensive copy so observers cannot mutate internal state.
+        return copy.deepcopy(self._status)
 
     @property
     def state(self) -> RiskState:
@@ -94,13 +100,14 @@ class TheHubRiskManager:
             self._status.reason = reason or event.value
             self._status.halted_at_ms = timestamp_ms
             self._status.active_faults.add(event)
-            return self._status
+            return copy.deepcopy(self._status)
 
         if event is RiskEvent.MANUAL_RESET:
             self._status = RiskStatus()
-            return self._status
+            return copy.deepcopy(self._status)
 
-        # OK signals clear their matching fault.
+        # OK signals clear their matching fault. HALTED is sticky — OK signals
+        # still discard the fault bookkeeping but cannot transition out of HALT.
         for fault, ok in _TRANSIENT_CLEAR.items():
             if event is ok:
                 self._status.active_faults.discard(fault)
@@ -111,11 +118,11 @@ class TheHubRiskManager:
             self._status.active_faults.add(event)
             self._status.state = RiskState.PAUSED
             self._status.reason = reason or event.value
-            return self._status
+            return copy.deepcopy(self._status)
 
         # Auto-recover PAUSED → RUNNING once all transient faults cleared.
         if self._status.state is RiskState.PAUSED and not self._status.active_faults:
             self._status.state = RiskState.RUNNING
             self._status.reason = None
 
-        return self._status
+        return copy.deepcopy(self._status)
