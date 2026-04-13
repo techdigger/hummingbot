@@ -128,7 +128,16 @@ class TheHubAuth(AuthBase):
         """Sign a cancel intent. orderHash may be hex string or bytes."""
         cancel = dict(cancel)
         if isinstance(cancel.get("orderHash"), str):
-            cancel["orderHash"] = bytes.fromhex(cancel["orderHash"].removeprefix("0x"))
+            order_hash_bytes = bytes.fromhex(cancel["orderHash"].removeprefix("0x"))
+            if len(order_hash_bytes) != 32:
+                raise ValueError(
+                    f"orderHash must be 32 bytes, got {len(order_hash_bytes)}"
+                )
+            cancel["orderHash"] = order_hash_bytes
+        elif isinstance(cancel.get("orderHash"), bytes) and len(cancel["orderHash"]) != 32:
+            raise ValueError(
+                f"orderHash must be 32 bytes, got {len(cancel['orderHash'])}"
+            )
         return self._sign_eip712(CANCEL_INTENT_TYPES, "CancelIntent", cancel)
 
     def create_cancel_request(

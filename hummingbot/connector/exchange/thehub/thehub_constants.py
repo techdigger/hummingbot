@@ -67,4 +67,29 @@ RATE_LIMITS = [
         time_interval=60,
         linked_limits=[LinkedLimitWeightPair(ALL_ENDPOINTS_LIMIT)],
     ),
+    RateLimit(
+        limit_id=RECENT_TRADES_PATH,
+        limit=MAX_REQUEST,
+        time_interval=60,
+        linked_limits=[LinkedLimitWeightPair(ALL_ENDPOINTS_LIMIT)],
+    ),
+    RateLimit(
+        limit_id=PRIVATE_STATE_PATH,
+        limit=MAX_REQUEST,
+        time_interval=60,
+        linked_limits=[LinkedLimitWeightPair(ALL_ENDPOINTS_LIMIT)],
+    ),
+    RateLimit(
+        limit_id=ORDER_BY_HASH_PATH,
+        limit=MAX_REQUEST,
+        time_interval=60,
+        linked_limits=[LinkedLimitWeightPair(ALL_ENDPOINTS_LIMIT)],
+    ),
+    RateLimit(
+        limit_id=ADDRESS_ORDERS_PATH,
+        limit=MAX_REQUEST,
+        time_interval=60,
+        linked_limits=[LinkedLimitWeightPair(ALL_ENDPOINTS_LIMIT)],
+    ),
+    # PUBLIC_STREAM_PATH is SSE via raw aiohttp — not routed through the throttler
 ]

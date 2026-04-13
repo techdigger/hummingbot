@@ -82,27 +82,37 @@ class TheHubAPIOrderBookDataSource(OrderBookTrackerDataSource):
     async def _listen_to_sse_stream(self) -> None:
         base_url = self._connector.thehub_api_url
         url = web_utils.public_rest_url(CONSTANTS.PUBLIC_STREAM_PATH, base_url)
-        async with aiohttp.ClientSession() as session:
+        # sock_read timeout ensures we detect stale TCP connections that stop
+        # sending data without closing (e.g. idle load balancers).
+        timeout = aiohttp.ClientTimeout(
+            total=None, sock_read=self.HEARTBEAT_TIME_INTERVAL * 2
+        )
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url, headers={"Accept": "text/event-stream"}) as resp:
                 resp.raise_for_status()
+                # Per SSE spec: accumulate data lines; dispatch on blank line.
                 event_name: Optional[str] = None
+                data_buf: list[str] = []
                 async for raw_line in resp.content:
                     line = raw_line.decode("utf-8").rstrip("\r\n")
                     if line.startswith("event:"):
                         event_name = line[6:].strip()
                     elif line.startswith("data:"):
-                        data_str = line[5:].strip()
-                        if data_str:
+                        data_buf.append(line[5:].strip())
+                    elif line == "":
+                        # Blank line = dispatch accumulated event
+                        if data_buf:
+                            data_str = "\n".join(data_buf)
                             try:
                                 msg = json.loads(data_str)
                             except json.JSONDecodeError:
-                                continue
-                            if event_name:
-                                msg.setdefault("type", event_name)
-                            await self._route_sse_event(msg)
-                            event_name = None
-                    elif line == "":
+                                pass
+                            else:
+                                if event_name:
+                                    msg.setdefault("type", event_name)
+                                await self._route_sse_event(msg)
                         event_name = None
+                        data_buf = []
 
     async def _route_sse_event(self, msg: Dict[str, Any]) -> None:
         event_type = msg.get("type", "")

@@ -237,3 +237,81 @@ class TheHubOrderBookDataSourceReconnectTests(IsolatedAsyncioWrapperTestCase):
             await self.data_source.listen_for_subscriptions()
 
         self.data_source._sleep.assert_called_once_with(5.0)
+
+
+class TheHubOrderBookDataSourceParseTests(IsolatedAsyncioWrapperTestCase):
+    """Tests for the _parse_* methods — the path the base class framework actually calls."""
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.data_source = _make_datasource()
+
+    async def test_parse_diff_message_puts_orderbook_message_on_queue(self):
+        raw = {"type": "snapshot", "trading_pair": EX_PAIR, **SNAPSHOT_REST}
+        output: asyncio.Queue = asyncio.Queue()
+        await self.data_source._parse_order_book_diff_message(raw, output)
+        self.assertFalse(output.empty())
+        msg = output.get_nowait()
+        from hummingbot.core.data_type.order_book_message import OrderBookMessageType
+        self.assertEqual(OrderBookMessageType.DIFF, msg.type)
+
+    async def test_parse_diff_message_resolves_trading_pair(self):
+        raw = {"type": "snapshot", "market": EX_PAIR, **SNAPSHOT_REST}
+        output: asyncio.Queue = asyncio.Queue()
+        await self.data_source._parse_order_book_diff_message(raw, output)
+        msg = output.get_nowait()
+        self.assertEqual(TRADING_PAIR, msg.trading_pair)
+
+    async def test_parse_diff_message_bid_price(self):
+        raw = {"type": "snapshot", "market": EX_PAIR, **SNAPSHOT_REST}
+        output: asyncio.Queue = asyncio.Queue()
+        await self.data_source._parse_order_book_diff_message(raw, output)
+        msg = output.get_nowait()
+        self.assertAlmostEqual(1.0, msg.bids[0][0], places=6)
+
+    async def test_parse_trade_message_puts_trade_on_queue(self):
+        raw = {
+            "type": "trade",
+            "market": EX_PAIR,
+            "priceE6": "1050000",
+            "baseAmount": "500000000000000000",
+            "side": "buy",
+            "timestamp": 1710000001000,
+            "txHash": "0xdeadbeef",
+        }
+        output: asyncio.Queue = asyncio.Queue()
+        await self.data_source._parse_trade_message(raw, output)
+        self.assertFalse(output.empty())
+        msg = output.get_nowait()
+        from hummingbot.core.data_type.order_book_message import OrderBookMessageType
+        self.assertEqual(OrderBookMessageType.TRADE, msg.type)
+
+    async def test_parse_trade_message_resolves_trading_pair(self):
+        raw = {
+            "type": "trade",
+            "market": EX_PAIR,
+            "priceE6": "1050000",
+            "baseAmount": "500000000000000000",
+            "side": "sell",
+            "timestamp": 1710000001000,
+            "txHash": "0xdeadbeef",
+        }
+        output: asyncio.Queue = asyncio.Queue()
+        await self.data_source._parse_trade_message(raw, output)
+        msg = output.get_nowait()
+        self.assertEqual(TRADING_PAIR, msg.trading_pair)
+
+    async def test_parse_trade_message_price(self):
+        raw = {
+            "type": "trade",
+            "market": EX_PAIR,
+            "priceE6": "1050000",
+            "baseAmount": "500000000000000000",
+            "side": "buy",
+            "timestamp": 1710000001000,
+            "txHash": "0xdeadbeef",
+        }
+        output: asyncio.Queue = asyncio.Queue()
+        await self.data_source._parse_trade_message(raw, output)
+        msg = output.get_nowait()
+        self.assertAlmostEqual(1.05, msg.content["price"], places=6)

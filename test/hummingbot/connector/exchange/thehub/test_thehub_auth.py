@@ -170,7 +170,5 @@ class TheHubAuthPassThroughTests(TestCase):
         import asyncio
         from unittest.mock import MagicMock
         request = MagicMock()
-        result = asyncio.get_event_loop().run_until_complete(
-            self.auth.rest_authenticate(request)
-        )
+        result = asyncio.run(self.auth.rest_authenticate(request))
         self.assertIs(request, result)

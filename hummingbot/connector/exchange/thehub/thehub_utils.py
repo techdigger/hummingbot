@@ -88,5 +88,16 @@ class TheHubConfigMap(BaseConnectorConfigMap):
     def validate_address(cls, value: str) -> str:
         return validate_evm_address(value)
 
+    @field_validator("thehub_private_key", mode="before")
+    @classmethod
+    def validate_private_key(cls, value: str) -> str:
+        if isinstance(value, str):
+            hex_val = value.removeprefix("0x")
+            if len(hex_val) != 64 or not all(c in "0123456789abcdefABCDEF" for c in hex_val):
+                raise ValueError(
+                    "thehub_private_key must be a 32-byte hex string (64 hex chars, optionally prefixed with 0x)"
+                )
+        return value
+
 
 KEYS = TheHubConfigMap.model_construct()
