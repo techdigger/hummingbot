@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "private_key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "chain_id": 5234,
+    "verifying_contract": "0x1111111254EEB25477B68fb85Ed929f73A960582",
+    "domain_name": "1inch Limit Order Protocol",
+    "domain_version": "4",
+    "note": "verifying_contract is a placeholder \u2014 update to actual TheHub LOP address and re-verify against typedData.ts"
+  },
+  "sell_order": {
+    "order": {
+      "salt": 111111111,
+      "maker": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "receiver": "0x0000000000000000000000000000000000000000",
+      "makerAsset": "0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa",
+      "takerAsset": "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
+      "makingAmount": 1000000000000000000,
+      "takingAmount": 1000000,
+      "makerTraits": 0
+    },
+    "expected_order_hash": "0x1c03aaf7651dba8cd0c26cb50f8a59a65434d52a59fa8fbfbb0b18542b4334f5",
+    "expected_signature": "0x40a353d597df3bec0b3bb34299f8cc4b0cb64e1a76ddfd2abb2cb193ace6ae4a72b56624502cdb6a547a9e50ec0cfc209e2275163a21aeb7a9f0a41bf28738b41b",
+    "recovered_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+  },
+  "buy_order": {
+    "order": {
+      "salt": 222222222,
+      "maker": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "receiver": "0x0000000000000000000000000000000000000000",
+      "makerAsset": "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
+      "takerAsset": "0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa",
+      "makingAmount": 1000000,
+      "takingAmount": 1000000000000000000,
+      "makerTraits": 0
+    },
+    "expected_order_hash": "0xd29be650e520b5274dd2d804704d5ffc5bc90c37ae17cfd94c0a2b2651b982e7",
+    "expected_signature": "0x40faa172456907c8709d1b9601660271667787c925f7db146ede649f349917b7398e4e3453d98b879d003e6921c87a327ba88ae156c224b97c81dd457755baec1b",
+    "recovered_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+  },
+  "cancel_intent": {
+    "intent": {
+      "maker": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "orderHash": "0x1c03aaf7651dba8cd0c26cb50f8a59a65434d52a59fa8fbfbb0b18542b4334f5",
+      "deadline": 9999999999
+    },
+    "expected_hash": "0xb711be3bcc2dbe28d52ee8f1e25692165724c74cd301a6add765845c49aed736",
+    "expected_signature": "0x5ed851f57568d75f40385c75cc293d7db5950d2d412f302ced157a7004654f9d5c66da042a6f8c8d15806c8546f97b7b7abe64ff5bc2142c568929049bc381951c",
+    "recovered_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+  },
+  "private_session_intent": {
+    "intent": {
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "issuedAt": 1710000000,
+      "expiry": 1710003600
+    },
+    "expected_hash": "0xcbcb5f6890545d4cf85a41c488b982da2952acd7f9d5d28cf090eee5558e8f73",
+    "expected_signature": "0x91c1a5177a6816a18662451edfdd02d50b0b0d4f41de76c98faf777dc668d63407b1a77f32c907967ae62aae581a66d4e746cab9bbb106e872f5c601d449949f1b",
+    "recovered_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+  }
+}
