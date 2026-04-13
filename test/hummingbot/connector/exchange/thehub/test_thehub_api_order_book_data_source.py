@@ -1,14 +1,14 @@
 import asyncio
 import json
-from test.isolated_asyncio_wrapper_test_case import IsolatedAsyncioWrapperTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from hummingbot.connector.exchange.thehub import thehub_constants as CONSTANTS
+from hummingbot.connector.exchange.thehub import thehub_web_utils as web_utils
 from hummingbot.connector.exchange.thehub.thehub_api_order_book_data_source import (
     TheHubAPIOrderBookDataSource,
 )
-from hummingbot.connector.exchange.thehub import thehub_constants as CONSTANTS
-from hummingbot.connector.exchange.thehub import thehub_web_utils as web_utils
 from hummingbot.core.data_type.order_book_message import OrderBookMessageType
+from test.isolated_asyncio_wrapper_test_case import IsolatedAsyncioWrapperTestCase
 
 TRADING_PAIR = "HMND-USDC"
 EX_PAIR = "HMND/USDC"

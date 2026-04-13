@@ -1,9 +1,7 @@
-from decimal import Decimal
 from unittest import TestCase
 
-from hummingbot.core.data_type.order_book_message import OrderBookMessageType
-
 from hummingbot.connector.exchange.thehub.thehub_order_book import TheHubOrderBook
+from hummingbot.core.data_type.order_book_message import OrderBookMessageType
 
 SNAPSHOT = {
     "market": "HMND/USDC",
