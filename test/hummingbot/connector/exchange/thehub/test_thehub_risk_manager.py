@@ -1,10 +1,6 @@
 from unittest import TestCase
 
-from hummingbot.connector.exchange.thehub.thehub_risk_manager import (
-    RiskEvent,
-    RiskState,
-    TheHubRiskManager,
-)
+from hummingbot.connector.exchange.thehub.thehub_risk_manager import RiskEvent, RiskState, TheHubRiskManager
 
 
 class TheHubRiskManagerTests(TestCase):
