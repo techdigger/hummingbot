@@ -7,6 +7,8 @@ from eth_account.messages import encode_typed_data
 
 from hummingbot.connector.exchange.thehub.thehub_auth import (
     CANCEL_INTENT_TYPES,
+    EIP712_DOMAIN_WITH_CONTRACT,
+    EIP712_DOMAIN_WITHOUT_CONTRACT,
     ONE_INCH_ORDER_TYPES,
     PRIVATE_SESSION_INTENT_TYPES,
     TheHubAuth,
@@ -21,8 +23,6 @@ PRIVATE_KEY = _F["meta"]["private_key"]
 ADDRESS = _F["meta"]["address"]
 VERIFYING_CONTRACT = _F["meta"]["verifying_contract"]
 CHAIN_ID = _F["meta"]["chain_id"]
-DOMAIN_NAME = _F["meta"]["domain_name"]
-DOMAIN_VERSION = _F["meta"]["domain_version"]
 
 
 def _make_auth() -> TheHubAuth:
@@ -30,8 +30,6 @@ def _make_auth() -> TheHubAuth:
         private_key=PRIVATE_KEY,
         verifying_contract=VERIFYING_CONTRACT,
         chain_id=CHAIN_ID,
-        domain_name=DOMAIN_NAME,
-        domain_version=DOMAIN_VERSION,
     )
 
 
@@ -58,8 +56,8 @@ class TheHubAuthOrderSigningTests(TestCase):
     def test_sell_order_signature_recovers_maker_address(self):
         result = self.auth.sign_limit_order(self.sell["order"])
         signable = encode_typed_data(full_message={
-            "types": ONE_INCH_ORDER_TYPES,
-            "domain": self.auth._domain(),
+            "types": {"EIP712Domain": EIP712_DOMAIN_WITH_CONTRACT, **ONE_INCH_ORDER_TYPES},
+            "domain": self.auth._lop_domain(),
             "primaryType": "Order",
             "message": self.sell["order"],
         })
@@ -73,8 +71,8 @@ class TheHubAuthOrderSigningTests(TestCase):
     def test_buy_order_signature_recovers_maker_address(self):
         result = self.auth.sign_limit_order(self.buy["order"])
         signable = encode_typed_data(full_message={
-            "types": ONE_INCH_ORDER_TYPES,
-            "domain": self.auth._domain(),
+            "types": {"EIP712Domain": EIP712_DOMAIN_WITH_CONTRACT, **ONE_INCH_ORDER_TYPES},
+            "domain": self.auth._lop_domain(),
             "primaryType": "Order",
             "message": self.buy["order"],
         })
@@ -110,8 +108,8 @@ class TheHubAuthCancelIntentTests(TestCase):
         result = self.auth.sign_cancel_intent(self.fix["intent"])
         order_hash_bytes = bytes.fromhex(self.fix["intent"]["orderHash"][2:])
         signable = encode_typed_data(full_message={
-            "types": CANCEL_INTENT_TYPES,
-            "domain": self.auth._domain(),
+            "types": {"EIP712Domain": EIP712_DOMAIN_WITHOUT_CONTRACT, **CANCEL_INTENT_TYPES},
+            "domain": self.auth._backend_domain(),
             "primaryType": "CancelIntent",
             "message": {**self.fix["intent"], "orderHash": order_hash_bytes},
         })
@@ -119,13 +117,15 @@ class TheHubAuthCancelIntentTests(TestCase):
         self.assertEqual(ADDRESS, recovered)
 
     def test_create_cancel_request_shape(self):
-        market = "HMND/USDC"
+        market = self.fix["intent"]["market"]
         order_hash = self.fix["intent"]["orderHash"]
         deadline = self.fix["intent"]["deadline"]
         req = self.auth.create_cancel_request(market, order_hash, deadline)
-        self.assertEqual(market, req["market"])
-        self.assertEqual(order_hash, req["orderHash"])
-        self.assertEqual(deadline, req["deadline"])
+        cancel = req["cancel"]
+        self.assertEqual(market, cancel["market"])
+        self.assertEqual(order_hash, cancel["orderHash"])
+        self.assertEqual(deadline, cancel["deadline"])
+        self.assertEqual(ADDRESS, cancel["owner"])
         self.assertTrue(req["signature"].startswith("0x"))
 
 
@@ -145,8 +145,8 @@ class TheHubAuthPrivateSessionTests(TestCase):
     def test_private_session_signature_recovers_owner_address(self):
         result = self.auth.sign_private_session_intent(self.fix["intent"])
         signable = encode_typed_data(full_message={
-            "types": PRIVATE_SESSION_INTENT_TYPES,
-            "domain": self.auth._domain(),
+            "types": {"EIP712Domain": EIP712_DOMAIN_WITHOUT_CONTRACT, **PRIVATE_SESSION_INTENT_TYPES},
+            "domain": self.auth._backend_domain(),
             "primaryType": "PrivateSessionIntent",
             "message": self.fix["intent"],
         })
@@ -155,10 +155,12 @@ class TheHubAuthPrivateSessionTests(TestCase):
 
     def test_create_private_session_request_shape(self):
         req = self.auth.create_private_session_request(ttl_seconds=3600)
-        self.assertEqual(ADDRESS, req["owner"])
-        self.assertIn("issuedAt", req)
-        self.assertIn("expiry", req)
-        self.assertEqual(req["expiry"] - req["issuedAt"], 3600)
+        intent = req["intent"]
+        self.assertEqual(ADDRESS, intent["owner"])
+        self.assertIn("issuedAt", intent)
+        self.assertIn("expiry", intent)
+        self.assertIn("nonce", intent)
+        self.assertEqual(intent["expiry"] - intent["issuedAt"], 3600)
         self.assertTrue(req["signature"].startswith("0x"))
 
 
