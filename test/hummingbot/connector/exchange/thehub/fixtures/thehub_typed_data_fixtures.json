@@ -4,7 +4,7 @@
     "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "chain_id": 5234,
     "verifying_contract": "0x1111111254EEB25477B68fb85Ed929f73A960582",
-    "note": "verifying_contract is a placeholder \u2014 update to actual TheHub LOP address and re-verify against typedData.ts"
+    "note": "verifying_contract uses the expected 1inch Limit Order Protocol v4 address for signing fixtures. Re-verify against TheHub typedData.ts and the deployed Humanode LOP address before live trading."
   },
   "sell_order": {
     "order": {
