@@ -27,14 +27,16 @@ Ask TheHub team for bot-safe exchange semantics before connector implementation:
 - Add `GET /api/orderbook/ready` that reports process readiness, persistence health, Humanode RPC reachability, LOP configured, resolver enabled, and current market sequence.
 - Confirm `/api/orderbook/admin/*` remains blocked from public access or always requires `x-orderbook-admin-token`.
 
-WebSocket is not mandatory for v1, but ask for it in parallel:
+Ask TheHub to implement WebSocket for v1 production if they can deliver it
+without delaying the API contract. REST snapshot plus SSE/private polling is an
+acceptable fallback for first smoke testing, but it is worse for market making.
 
 - Public channel: orderbook snapshots or diffs, trades, heartbeat.
 - Private channel: order updates, fills, settlement updates.
 - All events should include `market`, `sequence`, `updatedAt`, `orderHash`, and `clientOrderId` where applicable.
 - Reconnect model: client can fetch REST snapshot, then consume stream updates after a known sequence.
 
-If WebSocket is not ready, v1 uses REST snapshots, TheHub's SSE public stream, and private-state polling. Private polling must authenticate by calling `POST /api/orderbook/private-session`, then sending the returned token in the `x-orderbook-private-token` header when reading private owner state.
+If WebSocket is not ready, v1 smoke testing can use REST snapshots, TheHub's SSE public stream, and private-state polling. Private polling must authenticate by calling `POST /api/orderbook/private-session`, then sending the returned token in the `x-orderbook-private-token` header when reading private owner state. REST order lookup, fills backfill, private-state snapshot, and market metadata are still required even when WebSocket exists because the connector needs reconciliation and reconnect recovery.
 
 ## Phase 2: Connector Scope And Architecture
 
